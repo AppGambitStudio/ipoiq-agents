@@ -23,6 +23,7 @@ async function runAgent(prompt: string): Promise<void> {
   for await (const message of query({
     prompt,
     options: {
+      model: "anthropic/claude-haiku-4.5",
       systemPrompt: SYSTEM_PROMPT,
       allowedTools: ["WebSearch", "WebFetch"],
       permissionMode: "bypassPermissions",

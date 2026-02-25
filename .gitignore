@@ -3,3 +3,5 @@ dist/
 .env
 output/
 ipo-analysis/
+*.log
+.DS_Store

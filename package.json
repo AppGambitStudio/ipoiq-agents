@@ -5,10 +5,10 @@
   "scripts": {
     "start": "tsx src/index.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["ai-agent", "claude", "ipo-analysis", "openrouter", "claude-agent-sdk"],
+  "author": "Antigravity",
+  "license": "MIT",
+  "description": "AI-powered IPO investment analysis using Claude Agent SDK with a team of specialized agents",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.56",
     "dotenv": "^17.3.1"

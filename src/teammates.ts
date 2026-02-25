@@ -23,55 +23,55 @@ export const teammates: TeammateConfig[] = [
     description: "Finds currently open IPOs in India with structured details",
     systemPrompt: IPO_SCANNER_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // fetch Groww page + individual IPO pages
   },
   {
     name: "macro-analyst",
     description: "Analyzes India's macroeconomic conditions and market outlook",
     systemPrompt: MACRO_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // 2-3 searches + synthesis
   },
   {
     name: "growth-analyst",
     description: "Analyzes growth prospects, business model, and competitive moats for an IPO company",
     systemPrompt: GROWTH_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // RHP + company site + industry data
   },
   {
     name: "valuation-analyst",
     description: "Evaluates IPO valuation, peer comparison, and pricing fairness",
     systemPrompt: VALUATION_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // RHP + screener for peers
   },
   {
     name: "risk-analyst",
     description: "Assesses business, financial, competitive, and regulatory risks for an IPO company",
     systemPrompt: RISK_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // RHP risk factors + news search
   },
   {
     name: "news-analyst",
     description: "Researches IPO details, recent news, management, and financial performance",
     systemPrompt: NEWS_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // chittorgarh + moneycontrol + company site
   },
   {
     name: "sentiment-analyst",
     description: "Analyzes GMP, subscription data, brokerage ratings, and social sentiment",
     systemPrompt: SENTIMENT_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 10,
+    maxTurns: 6,  // GMP site + subscription data + reddit/brokerage
   },
   {
     name: "report-assembler",
     description: "Synthesizes all research into a structured investment analysis report",
     systemPrompt: REPORT_ASSEMBLER_PROMPT,
     tools: [],
-    maxTurns: 3,
+    maxTurns: 2,  // pure synthesis, no tools needed
   },
 ];

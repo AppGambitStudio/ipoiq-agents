@@ -51,3 +51,70 @@ OpenRouter can proxy requests to Anthropic models, but the Agent SDK only works 
 | **Best for** | Code-centric agents, CI/CD | Custom agents, multi-model |
 
 **TL;DR**: Claude Agent SDK gives you Claude Code's power as a black box subprocess. Mastra gives you full control but you wire everything yourself. For production Docker workloads where you want transparency and lighter containers, Mastra-style SDKs are more conventional. The Agent SDK is more of a "deploy Claude Code as a service" approach.
+
+## IPO Investment Analysis — Teammate Architecture
+
+The primary use case is an automated IPO analysis pipeline that researches currently open IPOs in India and produces a structured investment report.
+
+### Pipeline Flow
+
+```
+Phase 1: ipo-scanner finds open IPOs → returns JSON
+Phase 2: In parallel:
+         ├── macro-analyst (1 call)
+         ├── IPO-1: growth + valuation + risk + news + sentiment (5 calls)
+         ├── IPO-2: growth + valuation + risk + news + sentiment (5 calls)
+         └── IPO-N: ...
+Phase 3: report-assembler synthesizes everything → markdown report
+```
+
+For N open IPOs: **3 + 5N agent calls** total (1 scan + 1 macro + 5×N per-IPO + 1 assembler).
+
+### Teammates (8 agents)
+
+| # | Teammate | Focus | Per-IPO? | Tools |
+|---|---|---|---|---|
+| 1 | **ipo-scanner** | Find currently open IPOs, extract names, price bands, dates, lot sizes, exchange | No, runs first | WebSearch, WebFetch |
+| 2 | **macro-analyst** | India's economy, GDP, inflation, RBI policy, sector trends, 5-10yr outlook | No, runs once | WebSearch, WebFetch |
+| 3 | **growth-analyst** | TAM, market positioning, revenue trajectory, competitive moats, business model | Yes | WebSearch, WebFetch |
+| 4 | **valuation-analyst** | P/E ratios, peer comparison, fair value rationale, premium/discount justification | Yes | WebSearch, WebFetch |
+| 5 | **risk-analyst** | Client concentration, asset quality, regulatory, competitive, execution risks | Yes | WebSearch, WebFetch |
+| 6 | **news-analyst** | IPO details (issue size, anchor investors, OFS), recent financials, management, use of proceeds | Yes | WebSearch, WebFetch |
+| 7 | **sentiment-analyst** | GMP tracking, brokerage ratings, Reddit/social sentiment, listing expectations | Yes | WebSearch, WebFetch |
+| 8 | **report-assembler** | Synthesizes all research into final structured report with recommendations | No, runs last | None (pure synthesis) |
+
+### Per-Company Report Sections
+
+Each IPO in the final report includes:
+- 📈 **Growth Prospects (5-15 Years)** — from growth-analyst
+- 💡 **Why This Fits Long-Term Investment Philosophy** — from growth-analyst
+- 📊 **Valuation Analysis** — from valuation-analyst
+- ⚠️ **Things to Keep in Mind** — from risk-analyst
+- 📰 **Recent News & Updates** — from news-analyst
+- 📊 **Market Sentiment & GMP Analysis** — from sentiment-analyst
+- 💭 **Bottom Line** — synthesized recommendation (SUBSCRIBE / SUBSCRIBE WITH CAUTION / AVOID)
+
+### Project Structure
+
+```
+src/
+  types.ts          — Data contracts (ScannedIPO, AgentResult, IPOResearchBundle)
+  prompts.ts        — All 8 system prompts (detailed, section-specific)
+  teammates.ts      — 8 teammate configs wiring prompts to tools
+  coordinator.ts    — Orchestration: scanIPOs → analyzeIPO → assembleReport
+  index.ts          — Pipeline driver: Phase 1 → 2 → 3, saves report to file
+ipo-analysis/       — Generated reports saved here
+```
+
+### Usage
+
+```bash
+npm start -- "IPO Investment Analysis - February 2026.md"
+```
+
+### Design Decisions
+
+- **`query()` over `unstable_v2_createSession()`** — All tasks are one-shot (not multi-turn), so `query()` is simpler and gives direct `systemPrompt` support without session lifecycle overhead.
+- **Parallel execution** — Macro analysis runs in parallel with all per-IPO research. Within each IPO, all 5 analysts run concurrently via `Promise.all`.
+- **Error resilience** — Each agent call catches errors independently. If one analyst fails, the rest continue and the report-assembler works with available data.
+- **JSON output for scanner** — ipo-scanner returns structured JSON so the coordinator can parse IPO names and dispatch per-IPO tasks programmatically.

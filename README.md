@@ -2,6 +2,8 @@
 
 An AI-powered IPO investment analysis system built with [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) and [OpenRouter](https://openrouter.ai/). It automatically researches currently open IPOs in India and generates comprehensive investment analysis reports.
 
+**Note**: Running this with multiple IPOs will generate a lot of API calls and will incur API call costs. It is recommended to run this with a single IPO at a time.
+
 ## How It Works
 
 The system uses a **team of 8 specialized AI agents** that work in parallel:
@@ -62,10 +64,10 @@ ANTHROPIC_API_KEY=
 ## Usage
 
 ```bash
-npm start -- "IPO Analysis - 25-02-2026.md"
+npm start -- "25-02-2026.md"
 ```
 
-The report is saved to `ipo-analysis/IPO Analysis - 25-02-2026.md`.
+The report is saved to `ipo-analysis/25-02-2026.md`.
 
 ## Configuration
 
@@ -83,11 +85,9 @@ Edit `src/index.ts` to change:
 
 ```
 src/
-  index.ts          Entry point — runs the 3-phase pipeline
-  coordinator.ts    Orchestrates agents with concurrency pool
-  teammates.ts      8 agent configurations (name, tools, limits)
-  prompts.ts        System prompts for each agent
-  types.ts          Shared TypeScript types
+  index.ts          Entry point — launches team lead, saves report
+  teammates.ts      Agent definitions (SDK AgentDefinition type)
+  prompts.ts        System prompts for team lead + 8 specialists
 docs/
   spec.md           Architecture notes and design decisions
 ipo-analysis/       Generated reports (gitignored)
@@ -95,14 +95,11 @@ ipo-analysis/       Generated reports (gitignored)
 
 ## Architecture
 
-The system uses the Claude Agent SDK's `query()` function, which spawns a Claude Code CLI subprocess for each agent call. Each agent gets:
+The system uses a **Team Lead** pattern: an AI agent coordinates 8 specialist agents using the Claude Agent SDK's native `agents` + `Task` tool mechanism.
 
-- A specialized **system prompt** with specific data sources to check
-- Access to **WebSearch** and **WebFetch** tools
-- A **maxTurns** limit to cap cost
-- **bypassPermissions** mode for autonomous execution
-
-The coordinator runs agents through a concurrency pool to avoid overwhelming the system with too many subprocesses.
+- **Team Lead** — receives the task, dispatches specialist agents via `Task` tool, handles failures, delivers the final report
+- **Specialist agents** — each has a focused system prompt, specific data sources to check, and access to `WebSearch`/`WebFetch`
+- **No hardcoded orchestration** — the team lead decides the workflow dynamically (which agents to call, how to handle failures, when to retry)
 
 See [`docs/spec.md`](./docs/spec.md) for detailed architecture documentation including Claude Agent SDK internals and comparison with Mastra.
 

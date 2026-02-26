@@ -52,36 +52,50 @@ OpenRouter can proxy requests to Anthropic models, but the Agent SDK only works 
 
 **TL;DR**: Claude Agent SDK gives you Claude Code's power as a black box subprocess. Mastra gives you full control but you wire everything yourself. For production Docker workloads where you want transparency and lighter containers, Mastra-style SDKs are more conventional. The Agent SDK is more of a "deploy Claude Code as a service" approach.
 
-## IPO Investment Analysis — Teammate Architecture
+## IPO Investment Analysis — Team Lead Architecture
 
-The primary use case is an automated IPO analysis pipeline that researches currently open IPOs in India and produces a structured investment report.
+The primary use case is an automated IPO analysis pipeline that researches currently open IPOs in India and produces comprehensive investment reports.
 
-### Pipeline Flow
+### Architecture: Team Lead + Specialist Agents
+
+The system uses the Claude Agent SDK's native `agents` + `Task` tool pattern. An AI **team lead** coordinates 8 specialist agents — no hardcoded orchestration in TypeScript.
 
 ```
-Phase 1: ipo-scanner finds open IPOs → returns JSON
-Phase 2: In parallel:
-         ├── macro-analyst (1 call)
-         ├── IPO-1: growth + valuation + risk + news + sentiment (5 calls)
-         ├── IPO-2: growth + valuation + risk + news + sentiment (5 calls)
-         └── IPO-N: ...
-Phase 3: report-assembler synthesizes everything → markdown report
+User: "Analyze currently open IPOs"
+         │
+         ▼
+┌─────────────────┐
+│   Team Lead     │  Coordinates via Task tool
+│   (AI agent)    │  Decides workflow dynamically
+└──┬──────────────┘
+   │
+   ├──► ipo-scanner          → finds open IPOs (Phase 1)
+   │
+   ├──► macro-analyst        → economic context (Phase 2, parallel)
+   │
+   ├──► For each IPO:        (Phase 2, parallel)
+   │    ├── growth-analyst
+   │    ├── valuation-analyst
+   │    ├── risk-analyst
+   │    ├── news-analyst
+   │    └── sentiment-analyst
+   │
+   └──► report-assembler     → final report (Phase 3)
 ```
 
-For N open IPOs: **3 + 5N agent calls** total (1 scan + 1 macro + 5×N per-IPO + 1 assembler).
+### Team (9 agents total)
 
-### Teammates (8 agents)
-
-| # | Teammate | Focus | Per-IPO? | Tools |
-|---|---|---|---|---|
-| 1 | **ipo-scanner** | Find currently open IPOs, extract names, price bands, dates, lot sizes, exchange | No, runs first | WebSearch, WebFetch |
-| 2 | **macro-analyst** | India's economy, GDP, inflation, RBI policy, sector trends, 5-10yr outlook | No, runs once | WebSearch, WebFetch |
-| 3 | **growth-analyst** | TAM, market positioning, revenue trajectory, competitive moats, business model | Yes | WebSearch, WebFetch |
-| 4 | **valuation-analyst** | P/E ratios, peer comparison, fair value rationale, premium/discount justification | Yes | WebSearch, WebFetch |
-| 5 | **risk-analyst** | Client concentration, asset quality, regulatory, competitive, execution risks | Yes | WebSearch, WebFetch |
-| 6 | **news-analyst** | IPO details (issue size, anchor investors, OFS), recent financials, management, use of proceeds | Yes | WebSearch, WebFetch |
-| 7 | **sentiment-analyst** | GMP tracking, brokerage ratings, Reddit/social sentiment, listing expectations | Yes | WebSearch, WebFetch |
-| 8 | **report-assembler** | Synthesizes all research into final structured report with recommendations | No, runs last | None (pure synthesis) |
+| # | Agent | Role | Tools |
+|---|---|---|---|
+| 0 | **team-lead** | Coordinates all agents, decides workflow, handles failures | Task |
+| 1 | **ipo-scanner** | Finds open IPOs from Groww.in, returns JSON | WebSearch, WebFetch |
+| 2 | **macro-analyst** | India's economy, GDP, inflation, RBI policy, sector trends | WebSearch, WebFetch |
+| 3 | **growth-analyst** | Per-IPO: TAM, moats, business model, investment thesis | WebSearch, WebFetch |
+| 4 | **valuation-analyst** | Per-IPO: P/E, peer comparison, financial snapshot | WebSearch, WebFetch |
+| 5 | **risk-analyst** | Per-IPO: risks with severity ratings, red flags | WebSearch, WebFetch |
+| 6 | **news-analyst** | Per-IPO: IPO details, financials, management, material events | WebSearch, WebFetch |
+| 7 | **sentiment-analyst** | Per-IPO: GMP, subscription data, brokerage ratings | WebSearch, WebFetch |
+| 8 | **report-assembler** | Synthesizes all research into structured report | None |
 
 ### Per-Company Report Sections
 
@@ -98,11 +112,9 @@ Each IPO in the final report includes:
 
 ```
 src/
-  types.ts          — Data contracts (ScannedIPO, AgentResult, IPOResearchBundle)
-  prompts.ts        — All 8 system prompts (detailed, section-specific)
-  teammates.ts      — 8 teammate configs wiring prompts to tools
-  coordinator.ts    — Orchestration: scanIPOs → analyzeIPO → assembleReport
-  index.ts          — Pipeline driver: Phase 1 → 2 → 3, saves report to file
+  prompts.ts        — All 9 system prompts (team lead + 8 specialists)
+  teammates.ts      — Agent definitions (AgentDefinition from SDK)
+  index.ts          — Entry point: launches team lead, saves report
 ipo-analysis/       — Generated reports saved here
 ```
 
@@ -114,7 +126,8 @@ npm start -- "IPO Investment Analysis - February 2026.md"
 
 ### Design Decisions
 
-- **`query()` over `unstable_v2_createSession()`** — All tasks are one-shot (not multi-turn), so `query()` is simpler and gives direct `systemPrompt` support without session lifecycle overhead.
-- **Parallel execution** — Macro analysis runs in parallel with all per-IPO research. Within each IPO, all 5 analysts run concurrently via `Promise.all`.
-- **Error resilience** — Each agent call catches errors independently. If one analyst fails, the rest continue and the report-assembler works with available data.
-- **JSON output for scanner** — ipo-scanner returns structured JSON so the coordinator can parse IPO names and dispatch per-IPO tasks programmatically.
+- **Team Lead pattern** — An AI agent coordinates the workflow via the SDK's `Task` tool, rather than hardcoded TypeScript orchestration. This allows dynamic decisions (retry on failure, skip if no data, adjust strategy).
+- **SDK-native agents** — Uses `AgentDefinition` from the Claude Agent SDK, wired into `query()` via the `agents` option. The team lead sees all agents and dispatches via `Task`.
+- **Parallel dispatch** — The team lead can dispatch multiple agents in parallel using the Task tool's built-in parallelism.
+- **Minimal TypeScript** — The code only handles startup, argument parsing, and file output. All orchestration logic lives in the team lead's prompt.
+- **Accuracy protocols** — Every research agent has an explicit accuracy protocol requiring source verification, no memory-based stats, and conflict reporting.

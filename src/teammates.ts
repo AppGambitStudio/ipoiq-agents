@@ -1,3 +1,4 @@
+import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 import {
   IPO_SCANNER_PROMPT,
   MACRO_ANALYST_PROMPT,
@@ -9,69 +10,45 @@ import {
   REPORT_ASSEMBLER_PROMPT,
 } from "./prompts.js";
 
-export type TeammateConfig = {
-  name: string;
-  description: string;
-  systemPrompt: string;
-  tools: string[];
-  maxTurns?: number;
-};
-
-export const teammates: TeammateConfig[] = [
-  {
-    name: "ipo-scanner",
-    description: "Finds currently open IPOs in India with structured details",
-    systemPrompt: IPO_SCANNER_PROMPT,
+export const agents: Record<string, AgentDefinition> = {
+  "ipo-scanner": {
+    description: "Finds currently open mainboard IPOs in India from Groww.in. Returns structured JSON with IPO details.",
+    prompt: IPO_SCANNER_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // fetch Groww page + individual IPO pages
   },
-  {
-    name: "macro-analyst",
-    description: "Analyzes India's macroeconomic conditions and market outlook",
-    systemPrompt: MACRO_ANALYST_PROMPT,
+  "macro-analyst": {
+    description: "Analyzes India's current macroeconomic conditions, market outlook, and 5-10 year growth prospects. Use for economic context.",
+    prompt: MACRO_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // 2-3 searches + synthesis
   },
-  {
-    name: "growth-analyst",
-    description: "Analyzes growth prospects, business model, and competitive moats for an IPO company",
-    systemPrompt: GROWTH_ANALYST_PROMPT,
+  "growth-analyst": {
+    description: "Analyzes growth prospects, business model, competitive moats, and investment thesis for a specific IPO company. Requires company name and IPO details in the task.",
+    prompt: GROWTH_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // RHP + company site + industry data
   },
-  {
-    name: "valuation-analyst",
-    description: "Evaluates IPO valuation, peer comparison, and pricing fairness",
-    systemPrompt: VALUATION_ANALYST_PROMPT,
+  "valuation-analyst": {
+    description: "Evaluates IPO valuation with P/E calculation, peer comparison table, and financial snapshot. Requires company name and price band in the task.",
+    prompt: VALUATION_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // RHP + screener for peers
   },
-  {
-    name: "risk-analyst",
-    description: "Assesses business, financial, competitive, and regulatory risks for an IPO company",
-    systemPrompt: RISK_ANALYST_PROMPT,
+  "risk-analyst": {
+    description: "Assesses business, financial, competitive, and regulatory risks for a specific IPO company. Returns severity-rated risk list. Requires company name in the task.",
+    prompt: RISK_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // RHP risk factors + news search
   },
-  {
-    name: "news-analyst",
-    description: "Researches IPO details, recent news, management, and financial performance",
-    systemPrompt: NEWS_ANALYST_PROMPT,
+  "news-analyst": {
+    description: "Researches IPO structure, anchor investors, recent financials, management details, and material news for a specific IPO. Requires company name in the task.",
+    prompt: NEWS_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // chittorgarh + moneycontrol + company site
   },
-  {
-    name: "sentiment-analyst",
-    description: "Analyzes GMP, subscription data, brokerage ratings, and social sentiment",
-    systemPrompt: SENTIMENT_ANALYST_PROMPT,
+  "sentiment-analyst": {
+    description: "Tracks GMP, subscription status, brokerage ratings, and retail sentiment for a specific IPO. Requires company name in the task.",
+    prompt: SENTIMENT_ANALYST_PROMPT,
     tools: ["WebSearch", "WebFetch"],
-    maxTurns: 6,  // GMP site + subscription data + reddit/brokerage
   },
-  {
-    name: "report-assembler",
-    description: "Synthesizes all research into a structured investment analysis report",
-    systemPrompt: REPORT_ASSEMBLER_PROMPT,
+  "report-assembler": {
+    description: "Synthesizes all research (macro + per-IPO analysis) into a single structured investment report. Pass ALL research results in the task prompt.",
+    prompt: REPORT_ASSEMBLER_PROMPT,
     tools: [],
-    maxTurns: 2,  // pure synthesis, no tools needed
   },
-];
+};
